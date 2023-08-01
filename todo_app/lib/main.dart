@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:todo_app/data/database.dart';
+import 'package:todo_app/data/todo.dart';
+import 'package:todo_app/data/util.dart';
+import 'package:todo_app/write.dart';
 
 void main() {
   runApp(const MyApp());
@@ -55,17 +60,44 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  int selectindex = 0;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  List<Todo> todos = [
+    // Todo(
+    //   title: "패스트캠퍼스 강의듣기1",
+    //   memo: "앱 개발 입문 강의 듣기1",
+    //   category: "공부",
+    //   color: Colors.redAccent.value,
+    //   done: 0,
+    //   date: 20210709,
+    // ),
+    // Todo(
+    //   title: "패스트캠퍼스 강의듣기2",
+    //   memo: "앱 개발 입문 강의 듣기2",
+    //   category: "공부",
+    //   color: Colors.blueAccent.value,
+    //   done: 1,
+    //   date: 20210709,
+    // )
+  ];
+
+  @override
+  void initState() {
+    getTodayTodo();
+    super.initState();
+  }
+
+  final DatabaseHelper databaseHelper = DatabaseHelper.instance;
+
+  void getTodayTodo() async {
+    todos =
+        await databaseHelper.getTodoByDate(Util.getForamtTime(DateTime.now()));
+    setState(() {});
+  }
+
+  void getAllTodo() async {
+    allTodo = await databaseHelper.getAllData();
+    setState(() {});
   }
 
   @override
@@ -81,54 +113,231 @@ class _MyHomePageState extends State<MyHomePage> {
         preferredSize: Size.fromHeight(0),
         child: AppBar(),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          Todo todo = await Navigator.of(context).push(MaterialPageRoute(
+              builder: (ctx) => TodoWritePage(
+                  todo: Todo(
+                      title: "",
+                      memo: "",
+                      category: "",
+                      color: 0,
+                      done: 0,
+                      date: Util.getForamtTime(
+                          DateTime.now().subtract(Duration(days: 1)))))));
+          getTodayTodo();
+          setState(() {});
+        },
+        child: Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+      ),
+      body: getPage(),
+      bottomNavigationBar: BottomNavigationBar(
+          currentIndex: selectindex,
+          onTap: (idx) {
+            if (idx == 1) {
+              getAllTodo();
+            }
+
+            setState(() {
+              selectindex = idx;
+            });
+          },
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.today_outlined),
+              label: "오늘",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              label: "기록",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.more_horiz),
+              label: "더보기",
+            ),
+          ]), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  Widget getPage() {
+    if (selectindex == 0) {
+      return getMain();
+    } else {
+      return getHistory();
+    }
+  }
+
+  Widget getMain() {
+    return ListView.builder(
+      itemBuilder: (ctx, idx) {
+        if (idx == 0) {
+          return Container(
+            margin: EdgeInsets.only(
+              top: 20,
+              left: 30,
+            ),
+            child: Text(
+              "오늘 하루",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        } else if (idx == 1) {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            margin: EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                for (var todo in todos)
+                  if (todo.done == 0)
+                    InkWell(
+                      onLongPress: () async {
+                        Todo t = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (ctx) => TodoWritePage(todo: todo)));
+                        getTodayTodo();
+                        setState(() {});
+                      },
+                      onTap: () async {
+                        setState(() {
+                          if (todo.done == 0) {
+                            todo.done = 1;
+                          } else {
+                            todo.done = 0;
+                          }
+                        });
+
+                        await databaseHelper.insertTodo(todo);
+                      },
+                      child: TodoCard(todo: todo),
+                    )
+              ],
+            ),
+          );
+        } else if (idx == 2) {
+          return Container(
+            margin: EdgeInsets.only(
+              top: 20,
+              left: 30,
+            ),
+            child: Text(
+              "완료된 하루",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        } else if (idx == 3) {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            margin: EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                for (var todo in todos)
+                  if (todo.done == 1)
+                    InkWell(
+                      onLongPress: () async {
+                        Todo t = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (ctx) => TodoWritePage(todo: todo)));
+                        getTodayTodo();
+                        setState(() {});
+                      },
+                      onTap: () async {
+                        setState(() {
+                          if (todo.done == 1) {
+                            todo.done = 0;
+                          } else {
+                            todo.done = 1;
+                          }
+                        });
+
+                        await databaseHelper.insertTodo(todo);
+                      },
+                      child: TodoCard(todo: todo),
+                    )
+              ],
+            ),
+          );
+        }
+      },
+      itemCount: 4,
+    );
+  }
+
+  List<Todo> allTodo = [];
+
+  Widget getHistory() {
+    return ListView.builder(
+      itemBuilder: (context, index) {
+        return TodoCard(todo: allTodo[index]);
+      },
+      itemCount: allTodo.length,
+    );
+  }
+}
+
+class TodoCard extends StatelessWidget {
+  final Todo todo;
+  late int now;
+  late DateTime time;
+
+  TodoCard({super.key, required this.todo}) {
+    now = Util.getForamtTime(DateTime.now());
+    time = Util.numToDateTime(todo.date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 5),
+      padding: EdgeInsets.symmetric(vertical: 3, horizontal: 12),
+      decoration: BoxDecoration(
+          color: Color(todo.color), borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              todo.title,
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+              todo.done == 0 ? "미완료" : "완료",
+              style: TextStyle(
+                color: Colors.white,
+              ),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: BottomNavigationBar(items: [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.today_outlined),
-          label: "오늘",
+        Container(
+          height: 2,
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: "기록",
+        Text(
+          todo.memo,
+          style: TextStyle(
+            color: Colors.white,
+          ),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.more_horiz),
-          label: "더보기",
-        ),
-      ]), // This trailing comma makes auto-formatting nicer for build methods.
+        now == todo.date
+            ? Container()
+            : Text(
+                "${time.month}월 ${time.day}일",
+                style: TextStyle(
+                  color: Colors.white,
+                ),
+              )
+      ]),
     );
   }
 }
