@@ -1,6 +1,9 @@
+import 'package:diary/data/database.dart';
 import 'package:diary/data/diary.dart';
+import 'package:diary/data/util.dart';
 import 'package:diary/write.dart';
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,21 +18,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
@@ -48,39 +36,96 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   int selectindex = 0;
+  final DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  Diary emptyDiary =
+      Diary(title: "", memo: "", category: "", date: -1, status: -1, image: "");
+
+  late Diary todayDiary;
+  late Diary historyDiary;
+
+  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+  DateTime _time = DateTime.now();
+
+  List<Diary> allDiarires = [];
+
+  List<String> statusImg = [
+    "asset/img/ico-weather_2.png",
+    "asset/img/ico-weather_3.png",
+    "asset/img/ico-weather.png",
+  ];
+
+  void getTodayDriay() async {
+    List<Diary> diary =
+        await databaseHelper.getDiaryByDate(Util.getForamtTime(DateTime.now()));
+    if (diary.isNotEmpty) {
+      todayDiary = diary.first;
+    }
+
+    setState(() {});
+  }
+
+  void getAllDriay() async {
+    allDiarires = await databaseHelper.getAllData();
+
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    todayDiary = emptyDiary;
+    historyDiary = emptyDiary;
+    getTodayDriay();
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      //   title: Text(widget.title),
+      // ),
       body: Center(child: getPage()),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (ctx) => DiaryWritePage(
-                diary: Diary(
-                  title: "",
-                  memo: "",
-                  category: "",
-                  date: 0,
-                  status: 0,
-                  image: "asset/img/b1.jpg",
-                ),
+          if (selectindex == 0) {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (ctx) => DiaryWritePage(
+                    diary: todayDiary.status == -1
+                        ? Diary(
+                            title: "",
+                            memo: "",
+                            category: "",
+                            date: Util.getForamtTime(DateTime.now()),
+                            status: 0,
+                            image: "asset/img/b1.jpg")
+                        : todayDiary),
               ),
-            ),
-          );
+            );
+            getTodayDriay();
+          } else {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (ctx) => DiaryWritePage(
+                    diary: historyDiary.status == -1
+                        ? Diary(
+                            title: "",
+                            memo: "",
+                            category: "",
+                            date: Util.getForamtTime(_time),
+                            status: 0,
+                            image: "asset/img/b1.jpg")
+                        : historyDiary),
+              ),
+            );
+            getDiaryByDate(_time);
+          }
+
+          getTodayDriay();
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
@@ -91,6 +136,10 @@ class _MyHomePageState extends State<MyHomePage> {
           setState(() {
             selectindex = index;
           });
+
+          if (selectindex == 2) {
+            getAllDriay();
+          }
         },
         items: const [
           BottomNavigationBarItem(
@@ -120,15 +169,214 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void getDiaryByDate(DateTime date) async {
+    List<Diary> d =
+        await databaseHelper.getDiaryByDate(Util.getForamtTime(date));
+    d.isEmpty ? historyDiary = emptyDiary : historyDiary = d.first;
+  }
+
   Widget getTodayPage() {
-    return Container();
+    if (todayDiary.status == -1) {
+      return Container(
+        child: Text("일기를 작성해주세요."),
+      );
+    }
+    return Container(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              todayDiary.image,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: ListView(
+              children: [
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${DateTime.now().month}.${DateTime.now().day}",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Image.asset(
+                        statusImg[todayDiary.status],
+                        fit: BoxFit.contain,
+                      )
+                    ],
+                  ),
+                ),
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white54,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        todayDiary.title,
+                        style: TextStyle(fontSize: 10),
+                      ),
+                      SizedBox(
+                        height: 12,
+                      ),
+                      Text(
+                        todayDiary.memo,
+                        style: TextStyle(fontSize: 18),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+          )
+        ],
+      ),
+    );
   }
 
   Widget getHistoryPage() {
-    return Container();
+    return Container(
+      child: ListView.builder(
+          itemCount: 2,
+          itemBuilder: (ctx, idx) {
+            if (idx == 0) {
+              return Container(
+                child: TableCalendar(
+                  focusedDay: _focusedDay,
+                  firstDay: DateTime.utc(2010, 10, 16),
+                  lastDay: DateTime.utc(2030, 3, 14),
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      print(selectedDay);
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                      getDiaryByDate(selectedDay);
+                      _time = selectedDay;
+                    });
+                  },
+                  selectedDayPredicate: (DateTime day) {
+                    // selectedDay 와 동일한 날짜의 모양을 바꿔줍니다.
+                    return isSameDay(_selectedDay, day);
+                  },
+                ),
+              );
+            } else if (idx == 1) {
+              if (historyDiary.status == -1) return SizedBox();
+              return Column(
+                children: [
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${_time.month}.${_time.day}",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Image.asset(
+                          statusImg[historyDiary.status],
+                          fit: BoxFit.contain,
+                        )
+                      ],
+                    ),
+                  ),
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white54,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          historyDiary.title,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 12,
+                        ),
+                        Text(
+                          historyDiary.memo,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Image.asset(
+                          historyDiary.image,
+                          fit: BoxFit.contain,
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              );
+            }
+          }),
+    );
   }
 
   Widget getChartPage() {
-    return Container();
+    return Container(
+      child: ListView.builder(
+        itemCount: 5,
+        itemBuilder: ((context, index) {
+          if (index == 0) {
+            return Container(
+              child: Row(children: [
+                for (var status in statusImg)
+                  Container(
+                    child: Column(children: [
+                      Image.asset(
+                        status,
+                        fit: BoxFit.contain,
+                      ),
+                      Text(
+                          "${allDiarires.where((element) => statusImg[element.status] == status).length} 개")
+                    ]),
+                  )
+              ]),
+            );
+          } else if (index == 1) {
+            return SingleChildScrollView(
+              child: Row(
+                children: [
+                  for (var d in allDiarires)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      height: 100,
+                      width: 100,
+                      child: Image.asset(
+                        d.image,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                ],
+              ),
+            );
+          }
+        }),
+      ),
+    );
   }
 }

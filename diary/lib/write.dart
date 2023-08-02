@@ -47,6 +47,8 @@ class _DiaryWritePageState extends State<DiaryWritePage> {
       appBar: AppBar(actions: [
         TextButton(
             onPressed: () async {
+              widget.diary.title = nameEditingController.text;
+              widget.diary.memo = memoEditingController.text;
               await databaseHelper.insertDiary(widget.diary);
               Navigator.of(context).pop();
             },
@@ -131,7 +133,7 @@ class _DiaryWritePageState extends State<DiaryWritePage> {
               return Container(
                 margin: EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
-                  controller: nameEditingController,
+                  controller: memoEditingController,
                   minLines: 10,
                   maxLines: 20,
                   decoration: InputDecoration(
