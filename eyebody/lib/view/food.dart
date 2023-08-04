@@ -1,10 +1,11 @@
+import 'dart:io';
+
 import 'package:eyebody/data/data.dart';
 import 'package:eyebody/data/databasehelper.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:multiple_images_picker/multiple_images_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
 
 class FoodAddPage extends StatefulWidget {
   const FoodAddPage({super.key, required this.food});
@@ -16,10 +17,19 @@ class FoodAddPage extends StatefulWidget {
 }
 
 class _FoodAddPageState extends State<FoodAddPage> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    textEditingController.text = food.kcal.toString();
+    memoEditingController.text = "${food.memo}";
+    super.initState();
+  }
+
   TextEditingController textEditingController = TextEditingController();
   TextEditingController memoEditingController = TextEditingController();
 
-  List<Asset> images = <Asset>[];
+  final ImagePicker _picker = ImagePicker();
+
   Food get food => widget.food;
 
   @override
@@ -30,7 +40,7 @@ class _FoodAddPageState extends State<FoodAddPage> {
           TextButton(
             onPressed: () async {
               food.memo = memoEditingController.text;
-              food.kcal = int.parse(textEditingController.text) ?? 0;
+              food.kcal = int.parse(textEditingController.text);
 
               final dbhelper = DataBaseHelper.instance;
               await dbhelper.insertFood(food);
@@ -67,10 +77,9 @@ class _FoodAddPageState extends State<FoodAddPage> {
                       child: Image.asset("assets/img/rice.png"),
                       aspectRatio: 1,
                     )
-                  : AssetThumb(
-                      asset: Asset(food.image, "food.png", 0, 0),
-                      width: 300,
-                      height: 300,
+                  : AspectRatio(
+                      child: Image.file(File(food.image)),
+                      aspectRatio: 1,
                     ),
             ),
           ),
@@ -116,37 +125,15 @@ class _FoodAddPageState extends State<FoodAddPage> {
   }
 
   Future<void> selectImage() async {
-    List<Asset> resultList = <Asset>[];
-    String error = 'No Error Detected';
-
-    PermissionStatus cameraStatus = await Permission.camera.request();
-    PermissionStatus mediaStatus = await Permission.mediaLibrary.request();
-    //PermissionStatus photoStatus = await Permission.photos.request();
-    // await Permission.mediaLibrary.request();
-    // await Permission.photos.request();
-
-    bool tmp = cameraStatus.isGranted;
-    tmp = mediaStatus.isGranted;
-    //tmp = photoStatus.isGranted;
-
-    if (cameraStatus.isGranted && mediaStatus.isGranted) {
-      try {
-        resultList = await MultipleImagesPicker.pickImages(
-          maxImages: 300,
-          enableCamera: true,
-          selectedAssets: images,
-          cupertinoOptions: CupertinoOptions(takePhotoIcon: "chat"),
-          materialOptions: MaterialOptions(
-            actionBarColor: "#abcdef",
-            actionBarTitle: "Example App",
-            allViewTitle: "All Photos",
-            useDetailsView: false,
-            selectCircleStrokeColor: "#000000",
-          ),
-        );
-      } on Exception catch (e) {
-        error = e.toString();
-      }
+    try {
+      final XFile pickedFile =
+          await _picker.pickImage(source: ImageSource.gallery) ??
+              XFile(food.image);
+      setState(() {
+        food.image = pickedFile.path;
+      });
+    } catch (e) {
+      print(e);
     }
 
     // final __img =

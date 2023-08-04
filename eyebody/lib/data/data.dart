@@ -1,13 +1,15 @@
+import 'dart:ui';
+
 class Food {
-  int id;
+  int? id;
   int date;
   int type;
   int kcal;
   String image;
-  String memo;
+  dynamic memo;
 
   Food({
-    required this.id,
+    this.id,
     required this.date,
     required this.type,
     required this.kcal,
@@ -22,7 +24,7 @@ class Food {
       type: data["type"],
       kcal: data["kcal"],
       image: data["image"],
-      memo: data["memo"],
+      memo: data["memo"] == int ? data["memo"].toString() : data["memo"],
     );
   }
 
@@ -39,53 +41,52 @@ class Food {
 }
 
 class WorkOut {
-  final int id;
-  final int date;
-  final int type;
-  final String image;
-  final String name;
-  final String memo;
+  int? id;
+  int date;
+  int time;
+  String image;
+  String name;
+  String memo;
 
   WorkOut({
-    required this.id,
+    this.id,
     required this.date,
-    required this.type,
     required this.image,
     required this.name,
     required this.memo,
+    required this.time,
   });
 
   factory WorkOut.fromDB(Map<String, dynamic> data) {
     return WorkOut(
-      id: data["id"],
-      date: data["date"],
-      type: data["type"],
-      name: data["name"],
-      image: data["image"],
-      memo: data["memo"],
-    );
+        id: data["id"],
+        date: data["date"],
+        name: data["name"],
+        image: data["image"],
+        memo: data["memo"],
+        time: data["time"]);
   }
 
   Map<String, dynamic> toMap() {
     return {
       "id": id,
       "date": date,
-      "type": type,
       "name": name,
       "image": image,
       "memo": memo,
+      "time": time,
     };
   }
 }
 
 class EyeBody {
-  final int id;
-  final int date;
-  final int weight;
-  final String image;
+  int? id;
+  int date;
+  int weight;
+  String image;
 
   EyeBody({
-    required this.id,
+    this.id,
     required this.date,
     required this.weight,
     required this.image,

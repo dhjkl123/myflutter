@@ -72,12 +72,10 @@ CREATE TABLE IF NOT EXISTS $eyebodyTable (
 
   Future<int> insertFood(Food food) async {
     Database db = await instance.database;
-
-    if (food.id < 0) {
-      final map = food.toMap();
+    final map = food.toMap();
+    if (food.id == null) {
       return await db.insert(foodTable, map);
     } else {
-      final map = food.toMap();
       return await db.update(foodTable, map);
     }
   }
@@ -110,12 +108,10 @@ CREATE TABLE IF NOT EXISTS $eyebodyTable (
 
   Future<int> insertWorkOut(WorkOut workout) async {
     Database db = await instance.database;
-
-    if (workout.id < 0) {
-      final map = workout.toMap();
+    final map = workout.toMap();
+    if (workout.id == null) {
       return await db.insert(workoutTable, map);
     } else {
-      final map = workout.toMap();
       return await db.update(workoutTable, map);
     }
   }
@@ -149,12 +145,10 @@ CREATE TABLE IF NOT EXISTS $eyebodyTable (
 
   Future<int> insertEyeBody(EyeBody eyebody) async {
     Database db = await instance.database;
-
-    if (eyebody.id < 0) {
-      final map = eyebody.toMap();
+    final map = eyebody.toMap();
+    if (eyebody.id == null) {
       return await db.insert(eyebodyTable, map);
     } else {
-      final map = eyebody.toMap();
       return await db.update(eyebodyTable, map);
     }
   }
