@@ -2,11 +2,34 @@ import 'package:diary/data/database.dart';
 import 'package:diary/data/diary.dart';
 import 'package:diary/data/util.dart';
 import 'package:diary/write.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'firebase_options.dart';
 
-void main() {
+late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
+
+  tz.initializeTimeZones();
+
+  const AndroidNotificationChannel androidNotificationChannel =
+      AndroidNotificationChannel("fastcampus", "eyebody");
+  flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(androidNotificationChannel);
 }
 
 class MyApp extends StatelessWidget {
@@ -73,17 +96,53 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  Future<bool?> initNotification() async {
+    var initSettingAdroid = AndroidInitializationSettings("app_icon");
+
+    var initSetting = InitializationSettings(android: initSettingAdroid);
+
+    await flutterLocalNotificationsPlugin.initialize(initSetting);
+
+    setScheduling();
+
+    return true;
+  }
+
   @override
   void initState() {
     todayDiary = emptyDiary;
     historyDiary = emptyDiary;
     getTodayDriay();
+    initNotification();
     super.initState();
+  }
+
+  void setScheduling() async {
+    var android = AndroidNotificationDetails("fastcampus", "eyebody",
+        importance: Importance.max, priority: Priority.max);
+
+    NotificationDetails details = NotificationDetails(android: android);
+
+    flutterLocalNotificationsPlugin.zonedSchedule(
+        0,
+        "오늘 다이어트를 기록하세요",
+        "앱에서 기록을 알려주세요",
+        tz.TZDateTime.from(
+          DateTime.now().add(Duration(seconds: 10)),
+          tz.local,
+        ),
+        androidAllowWhileIdle: true,
+        details,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: "eyebody",
+        matchDateTimeComponents: DateTimeComponents.time);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black87,
       // appBar: AppBar(
       //   backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       //   title: Text(widget.title),
